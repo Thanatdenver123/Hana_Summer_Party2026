@@ -31,7 +31,7 @@
                     <i data-lucide="sun"></i>
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold leading-none text-slate-900 uppercase">Hana Summer Party 2026</h1>
+                    <h1 class="text-xl font-bold leading-none text-slate-900 uppercase">HANA SUMMER PARTY 2026</h1>
                 </div>
             </div>
 
@@ -40,7 +40,7 @@
                 <button onclick="document.getElementById('imageInput').click()" 
                         class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full shadow-lg transition-all w-full justify-center active:scale-95">
                     <i data-lucide="camera"></i>
-                    <span>ค้นหาจากรูปภาพ</span>
+                    <span>ค้นหาจากรูปภาพโดยใช้ภาพเดี่ยว 1รูป</span>
                 </button>
             </div>
         </div>
@@ -54,7 +54,7 @@
                 <div class="bg-red-500 text-white p-6 rounded-3xl"><i data-lucide="shield-alert" class="w-12 h-12"></i></div>
                 <div class="flex-1">
                     <h2 class="text-2xl font-bold text-gray-900 mb-2">API Restricted (403)</h2>
-                    <p class="text-gray-600 mb-4">โปรดคัดลอกค่า Wildcard นี้ไปใส่ใน Google Console เพื่อปลดบล็อก:</p>
+                    <p class="text-gray-600 mb-4">โปรดตรวจสอบว่าโฟลเดอร์ Drive ตั้งค่าเป็น "ทุกคนที่มีลิงก์สามารถอ่านได้" และอนุญาต:</p>
                     <code class="bg-slate-900 p-4 rounded-2xl block text-blue-400 font-mono text-xs break-all">*.usercontent.goog/*</code>
                 </div>
             </div>
@@ -83,7 +83,7 @@
         <!-- Initial Loader -->
         <div id="mainLoader" class="flex flex-col items-center justify-center py-32">
             <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-14 w-14 mb-6"></div>
-            <p class="text-slate-400 text-sm font-medium animate-pulse uppercase tracking-widest">ดึงข้อมูลและจัดลำดับ Video เป็นอันดับแรก...</p>
+            <p class="text-slate-400 text-sm font-medium animate-pulse uppercase tracking-widest">กำลังเชื่อมต่อคลังสื่อจาก Google Drive...</p>
         </div>
 
         <!-- Gallery -->
@@ -130,6 +130,7 @@
     </div>
 
     <script>
+        // UPDATED FOLDER ID AND API KEY
         const API_KEY = 'AIzaSyBnIUmU5oRM75p8OETC9fINXWJ3_TeFVFc';
         const ROOT_FOLDER = '1BSN7gxmPWYCAKJgA9aH4yNuERpTvs4uiX-B4';
         
@@ -139,7 +140,7 @@
         let currentIndex = -1;
         let mediaEmbeddings = new Map(); 
         let isIndexing = false;
-        let folderSections = []; // Store folder data before rendering for sorting
+        let folderSections = []; 
 
         lucide.createIcons();
 
@@ -148,10 +149,10 @@
                 await tf.setBackend('webgl');
                 const modelTask = mobilenet.load({ version: 1, alpha: 0.25 });
                 
-                // Fetch all data recursively
+                // Recursive fetch
                 await fetchRecursive(ROOT_FOLDER, "Root");
                 
-                // Sort sections: Folders with videos come first
+                // Sort sections: Priority to folders containing videos
                 folderSections.sort((a, b) => {
                     const aHasVideo = a.files.some(f => f.isVideo);
                     const bHasVideo = b.files.some(f => f.isVideo);
@@ -160,7 +161,6 @@
                     return 0;
                 });
 
-                // Render all sections in sorted order
                 const container = document.getElementById('galleryContainer');
                 folderSections.forEach(section => {
                     renderFolderSection(section.title, section.files);
@@ -171,7 +171,7 @@
                 
                 if (allImagesForSearch.length > 0) startBackgroundIndexing();
                 else if (folderSections.length === 0) {
-                    document.getElementById('galleryContainer').innerHTML = `<div class="text-center py-20 text-slate-400 font-medium italic">ไม่พบเนื้อหาในคลังสื่อ</div>`;
+                    document.getElementById('galleryContainer').innerHTML = `<div class="text-center py-20 text-slate-400 font-medium italic">ไม่พบเนื้อหาในคลังสื่อ (กรุณาตรวจสอบการตั้งค่าโฟลเดอร์ Google Drive)</div>`;
                 }
                 
             } catch (error) {
@@ -224,11 +224,9 @@
 
                 if (currentFolderItems.length > 0) {
                     if (currentDisplayList.length === 0) currentDisplayList = allImagesForSearch;
-                    // Push to our sorting array instead of immediate rendering
                     folderSections.push({ title: cleanTitle, files: currentFolderItems });
                 }
 
-                // Subfolders processing
                 await Promise.all(subFolders.map(sub => fetchRecursive(sub.id, `${folderName} / ${sub.name}`)));
             } catch (e) { console.warn(e); }
         }
@@ -238,7 +236,6 @@
             const section = document.createElement('section');
             section.className = 'animate-in mb-10';
             
-            // Check if this section has videos to change icon/style if needed
             const hasVideo = files.some(f => f.isVideo);
             const icon = hasVideo ? 'video' : 'folder';
             const iconColor = hasVideo ? 'text-red-500' : 'text-blue-500';
@@ -247,15 +244,13 @@
                 <div class="flex items-center gap-4 mb-5 px-3">
                     <h2 class="text-sm md:text-base font-bold text-slate-700 uppercase tracking-widest flex items-center gap-2">
                         <i data-lucide="${icon}" class="w-5 h-5 ${iconColor}"></i> ${title}
-                        ${hasVideo ? '<span class="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full">VIDEO</span>' : ''}
+                        ${hasVideo ? '<span class="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full">VIDEO SECTION</span>' : ''}
                     </h2>
                     <div class="h-px bg-slate-300 flex-1"></div>
                 </div>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 px-2"></div>
             `;
             const grid = section.querySelector('.grid');
-            
-            // Sort files within the section to show videos first inside the grid too
             const sortedFiles = [...files].sort((a, b) => (b.isVideo - a.isVideo));
 
             sortedFiles.forEach(file => {
@@ -362,7 +357,7 @@
             container.innerHTML = `
                 <div class="animate-in px-2">
                     <div class="flex items-center gap-4 mb-8">
-                        <h2 class="text-xl font-bold text-blue-600 italic">🎯 20 รูปที่ใกล้เคียงที่สุด</h2>
+                        <h2 class="text-xl font-bold text-blue-600 italic">🎯 ผลการค้นหารูปที่คล้ายกันที่สุด</h2>
                         <div class="h-1 bg-blue-100 flex-1 rounded-full"></div>
                     </div>
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5">
@@ -371,7 +366,6 @@
                                 <div class="aspect-square bg-slate-100"><img src="${f.thumb}" class="w-full h-full object-cover"></div>
                                 <div class="p-3 text-center bg-white border-t border-slate-100">
                                     <div class="text-blue-600 font-extrabold text-sm">${Math.round(f.score * 100)}% Match</div>
-                                    <div class="text-[10px] text-slate-400 font-medium uppercase mt-1">Found in ${time}s</div>
                                     <div class="text-xs text-slate-600 font-bold truncate mt-1.5">${f.folderName}</div>
                                 </div>
                             </div>
@@ -380,7 +374,7 @@
                 </div>
             `;
             lucide.createIcons();
-            document.getElementById('searchStatus').innerText = "การค้นหาเสร็จสมบูรณ์!";
+            document.getElementById('searchStatus').innerText = "ค้นหาเสร็จสมบูรณ์!";
             document.getElementById('searchProgressBar').style.width = '100%';
         }
 
