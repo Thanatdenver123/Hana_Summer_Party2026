@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hana Summer Party 2026 - Ultra Fast Discovery</title>
+    <title>Hana Summer Party 2026 - Video First Discovery</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
@@ -83,7 +83,7 @@
         <!-- Initial Loader -->
         <div id="mainLoader" class="flex flex-col items-center justify-center py-32">
             <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-14 w-14 mb-6"></div>
-            <p class="text-slate-400 text-sm font-medium animate-pulse uppercase tracking-widest">ดึงข้อมูลคลังภาพแบบรวดเร็วพิเศษ...</p>
+            <p class="text-slate-400 text-sm font-medium animate-pulse uppercase tracking-widest">ดึงข้อมูลและจัดลำดับ Video เป็นอันดับแรก...</p>
         </div>
 
         <!-- Gallery -->
@@ -93,13 +93,10 @@
 
     <!-- Modal View -->
     <div id="imageModal" class="fixed inset-0 bg-slate-900/98 backdrop-blur-2xl z-[100] hidden items-center justify-center p-2 select-none">
-        
-        <!-- Close Button -->
         <button onclick="closeModal()" class="absolute top-4 right-4 md:top-8 md:right-8 bg-black/70 hover:bg-red-600 text-white p-5 rounded-full z-[120] transition-all active:scale-90 shadow-2xl border border-white/20">
             <i data-lucide="x" class="w-8 h-8"></i>
         </button>
 
-        <!-- Desktop Arrows -->
         <button id="prevBtn" onclick="navigateMedia(-1)" class="nav-btn absolute left-8 top-1/2 -translate-y-1/2 text-white p-5 rounded-full z-[105] hidden lg:block active:scale-95 transition-all">
             <i data-lucide="chevron-left" class="w-10 h-10"></i>
         </button>
@@ -110,7 +107,6 @@
         <div class="max-w-7xl w-full flex flex-col items-center gap-4 animate-in">
             <div id="modalContent" class="w-full flex justify-center items-center h-[65vh] md:h-[75vh]"></div>
             
-            <!-- Mobile Bottom Nav -->
             <div class="flex lg:hidden gap-10 mt-1">
                  <button onclick="navigateMedia(-1)" class="bg-white/10 p-5 rounded-full text-white active:bg-blue-600 shadow-xl border border-white/5 transition-colors">
                     <i data-lucide="chevron-left" class="w-10 h-10"></i>
@@ -120,7 +116,6 @@
                 </button>
             </div>
 
-            <!-- Actions -->
             <div class="flex flex-col sm:flex-row justify-center gap-3 w-full px-6 max-w-lg">
                 <a id="downloadBtn" href="#" download class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl flex items-center justify-center gap-3 shadow-xl font-bold active:scale-95 transition-all w-full">
                     <i data-lucide="download" class="w-5 h-5"></i>
@@ -144,53 +139,44 @@
         let currentIndex = -1;
         let mediaEmbeddings = new Map(); 
         let isIndexing = false;
-        
-        // เพิ่มตัวแปรสำหรับเก็บข้อมูลโฟลเดอร์เพื่อนำมาจัดเรียง
-        let allFolderSections = [];
+        let folderSections = []; // Store folder data before rendering for sorting
 
         lucide.createIcons();
 
-        // 1. Initial Load
         window.onload = async () => {
             try {
                 await tf.setBackend('webgl');
                 const modelTask = mobilenet.load({ version: 1, alpha: 0.25 });
                 
+                // Fetch all data recursively
                 await fetchRecursive(ROOT_FOLDER, "Root");
                 
-                // --- จัดเรียงโฟลเดอร์และ Render ---
-                // จัดเรียงให้โฟลเดอร์ที่มีวิดีโอ (hasVideo = true) ขึ้นมาอยู่ด้านบนสุด
-                allFolderSections.sort((a, b) => {
-                    if (a.hasVideo && !b.hasVideo) return -1;
-                    if (!a.hasVideo && b.hasVideo) return 1;
+                // Sort sections: Folders with videos come first
+                folderSections.sort((a, b) => {
+                    const aHasVideo = a.files.some(f => f.isVideo);
+                    const bHasVideo = b.files.some(f => f.isVideo);
+                    if (aHasVideo && !bHasVideo) return -1;
+                    if (!aHasVideo && bHasVideo) return 1;
                     return 0;
                 });
 
-                // กำหนดลิสต์เพื่อเอาไว้แสดงผล Modal Slider สำหรับภาพ
-                if (allImagesForSearch.length > 0) currentDisplayList = allImagesForSearch;
-                
-                // Render ข้อมูลที่จัดเรียงเรียบร้อยแล้วทั้งหมด
-                allFolderSections.forEach(section => {
-                    renderFolderSection(section.title, section.items);
+                // Render all sections in sorted order
+                const container = document.getElementById('galleryContainer');
+                folderSections.forEach(section => {
+                    renderFolderSection(section.title, section.files);
                 });
-                // ------------------------------------------
 
                 net = await modelTask;
                 document.getElementById('mainLoader').classList.add('hidden');
                 
-                if (allImagesForSearch.length > 0) {
-                    startBackgroundIndexing();
-                } else if (allFolderSections.length === 0) {
+                if (allImagesForSearch.length > 0) startBackgroundIndexing();
+                else if (folderSections.length === 0) {
                     document.getElementById('galleryContainer').innerHTML = `<div class="text-center py-20 text-slate-400 font-medium italic">ไม่พบเนื้อหาในคลังสื่อ</div>`;
                 }
                 
             } catch (error) {
-                if (error.message && error.message.includes("403")) {
-                    document.getElementById('setupGuide').classList.remove('hidden');
-                } else {
-                    console.error(error);
-                }
-                document.getElementById('mainLoader').classList.add('hidden');
+                if (error.message.includes("403")) document.getElementById('setupGuide').classList.remove('hidden');
+                else console.error(error);
             }
         };
 
@@ -206,22 +192,6 @@
 
                 let cleanTitle = folderName.replace(/^Root\s*\/?\s*/, "") || "คลังภาพหลัก";
                 const currentFolderItems = [];
-                let hasVideo = false;
-
-                // นำ Video ใส่เข้าไปก่อน (เพื่อให้แสดงขึ้นมาก่อนภาพในโฟลเดอร์เดียวกัน)
-                if (videoFiles.length > 0) {
-                    hasVideo = true; 
-                    const mappedVideos = videoFiles.map(f => ({
-                        id: f.id,
-                        name: f.name,
-                        mimeType: f.mimeType,
-                        driveLink: `https://drive.google.com/file/d/${f.id}/view`,
-                        thumb: f.thumbnailLink ? f.thumbnailLink.replace(/=s\d+/, '=s600') : `https://via.placeholder.com/600x400?text=VIDEO`,
-                        folderName: cleanTitle,
-                        isVideo: true
-                    }));
-                    currentFolderItems.push(...mappedVideos);
-                }
 
                 if (imageFiles.length > 0) {
                     const mappedImages = imageFiles.map(f => ({
@@ -239,36 +209,56 @@
                     currentFolderItems.push(...mappedImages);
                 }
 
-                // เก็บข้อมูลโฟลเดอร์ไว้เพื่อเตรียมนำไป Sort
-                if (currentFolderItems.length > 0) {
-                    allFolderSections.push({
-                        title: cleanTitle,
-                        items: currentFolderItems,
-                        hasVideo: hasVideo
-                    });
+                if (videoFiles.length > 0) {
+                    const mappedVideos = videoFiles.map(f => ({
+                        id: f.id,
+                        name: f.name,
+                        mimeType: f.mimeType,
+                        driveLink: `https://drive.google.com/file/d/${f.id}/view`,
+                        thumb: f.thumbnailLink ? f.thumbnailLink.replace(/=s\d+/, '=s600') : `https://via.placeholder.com/600x400?text=VIDEO`,
+                        folderName: cleanTitle,
+                        isVideo: true
+                    }));
+                    currentFolderItems.push(...mappedVideos);
                 }
 
-                // ทำการค้นหาในโฟลเดอร์ย่อยแบบขนาน (Parallel)
+                if (currentFolderItems.length > 0) {
+                    if (currentDisplayList.length === 0) currentDisplayList = allImagesForSearch;
+                    // Push to our sorting array instead of immediate rendering
+                    folderSections.push({ title: cleanTitle, files: currentFolderItems });
+                }
+
+                // Subfolders processing
                 await Promise.all(subFolders.map(sub => fetchRecursive(sub.id, `${folderName} / ${sub.name}`)));
             } catch (e) { console.warn(e); }
         }
 
-        // 2. Rendering
         function renderFolderSection(title, files) {
             const container = document.getElementById('galleryContainer');
             const section = document.createElement('section');
             section.className = 'animate-in mb-10';
+            
+            // Check if this section has videos to change icon/style if needed
+            const hasVideo = files.some(f => f.isVideo);
+            const icon = hasVideo ? 'video' : 'folder';
+            const iconColor = hasVideo ? 'text-red-500' : 'text-blue-500';
+
             section.innerHTML = `
                 <div class="flex items-center gap-4 mb-5 px-3">
                     <h2 class="text-sm md:text-base font-bold text-slate-700 uppercase tracking-widest flex items-center gap-2">
-                        <i data-lucide="folder" class="w-5 h-5 text-blue-500"></i> ${title}
+                        <i data-lucide="${icon}" class="w-5 h-5 ${iconColor}"></i> ${title}
+                        ${hasVideo ? '<span class="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full">VIDEO</span>' : ''}
                     </h2>
                     <div class="h-px bg-slate-300 flex-1"></div>
                 </div>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 px-2"></div>
             `;
             const grid = section.querySelector('.grid');
-            files.forEach(file => {
+            
+            // Sort files within the section to show videos first inside the grid too
+            const sortedFiles = [...files].sort((a, b) => (b.isVideo - a.isVideo));
+
+            sortedFiles.forEach(file => {
                 const div = document.createElement('div');
                 div.className = 'image-card bg-white rounded-2xl shadow-sm overflow-hidden cursor-pointer border-2 border-white hover:shadow-xl transition-all relative';
                 div.onclick = () => {
@@ -298,7 +288,6 @@
             lucide.createIcons();
         }
 
-        // 3. AI Smart Indexing & Fast Search
         async function startBackgroundIndexing() {
             if (isIndexing || !net) return;
             isIndexing = true;
@@ -309,8 +298,6 @@
                     const vector = await getImageEmbedding(item.embedThumb);
                     mediaEmbeddings.set(item.id, vector);
                 } catch (e) {}
-                
-                // Allow UI to breathe
                 if (i % 10 === 0) await tf.nextFrame();
             }
             isIndexing = false;
@@ -350,7 +337,6 @@
                         
                         results.push({ ...item, score: cosineSimilarity(targetVector, featureVector) });
                         
-                        // Ultra fast UI Update
                         if (i % 15 === 0) {
                             const p = Math.round((i / total) * 100);
                             document.getElementById('searchStatus').innerText = `กำลังประมวลผล... ${p}%`;
@@ -398,7 +384,6 @@
             document.getElementById('searchProgressBar').style.width = '100%';
         }
 
-        // 4. Utils
         async function getImageEmbedding(url) {
             return new Promise((resolve, reject) => {
                 const img = new Image(); img.crossOrigin = "anonymous"; img.src = url;
